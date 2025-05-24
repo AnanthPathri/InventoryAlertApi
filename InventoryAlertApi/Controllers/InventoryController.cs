@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using InventoryAlertApi.Jobs;
+using Microsoft.AspNetCore.Mvc;
 
 namespace InventoryAlertApi.Controllers
 {
@@ -6,10 +7,21 @@ namespace InventoryAlertApi.Controllers
     [Route("api/[controller]")]
     public class InventoryController : ControllerBase
     {
+        private readonly InventoryAlertJob _inventoryAlertJob;
+        public InventoryController(InventoryAlertJob inventoryAlertJob)
+        {
+            _inventoryAlertJob = inventoryAlertJob;
+        }
         [HttpGet("status")]
-        public IActionResult GetStatus() 
+        public ActionResult GetStatus() 
         { 
             return Ok("Inventory alert system is running."); 
+        }
+        [HttpPost("run-alert")]
+        public async Task<IActionResult> RunAlertJob()
+        {
+            await _inventoryAlertJob.Execute(null);
+            return Ok("Inventory alert executed and email sent.");
         }
     }
 }
