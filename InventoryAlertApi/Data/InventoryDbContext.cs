@@ -8,12 +8,19 @@ namespace InventoryAlertApi.Data
         public InventoryDbContext(DbContextOptions<InventoryDbContext> options) : base(options) { }
         public DbSet<PRODUCTS> PRODUCTS { get; set; }
         public DbSet<STOCKBATCHES> STOCKBATCHES { get; set; }
+        public DbSet<WAREHOUSES> WAREHOUSES { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            //STOCKBATCHES -> PRODUCTS
             modelBuilder.Entity<STOCKBATCHES>()
                 .HasOne(sb => sb.PRODUCTS)
                 .WithMany(p => p.STOCKBATCHES)
                 .HasForeignKey(sb => sb.PRODUCT_ID);
+            //STOCKBATCHES -> WAREHOUSES
+            modelBuilder.Entity<STOCKBATCHES>()
+                .HasOne(sb => sb.WAREHOUSES)
+                .WithMany(p => p.STOCKBATCHES)
+                .HasForeignKey(sb => sb.WAREHOUSE_ID);
             base.OnModelCreating(modelBuilder);
         }
     }
