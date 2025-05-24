@@ -3,6 +3,7 @@ using InventoryAlertApi.Data;
 using InventoryAlertApi.Models;
 using InventoryAlertApi.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
 
 namespace InventoryAlertApi.Jobs
 {
@@ -18,22 +19,29 @@ namespace InventoryAlertApi.Jobs
         }
         public async Task Execute(IJobExecutionContext context)
         {
-            var inventory = await _context.Products.ToListAsync();
+            var alertMessages=new StringBuilder();
+            //var products = await _context.PRODUCTS.ToListAsync();
+            var stockBatches = await _context.STOCKBATCHES.Include(static sb => sb.PRODUCTS).ToListAsync();
 
-            foreach (var item in inventory)
+            foreach (var batch in stockBatches)
             {
+                var product = batch.PRODUCTS;
                 string? alert = null;
-                if (item.quantity <= 0)
-                    alert = $"{item.name} is OUT OF STOCK.";
-                else if (item.expiryDate <= DateTime.Today)
-                    alert = $"{item.name} has EXPIRED.";
-                else if (item.quantity > item.overStockThreshold)
-                    alert = $"{item.name} is OVERSTOCKED ({item.quantity} units).";
-                if (alert != null)
-                {
-                    //smsService.Send(alert);
-                    await _emailService.SendAsync("Inventory Alert", alert);
-                }
+                if (batch.REMAINING_QTY <= 0)
+                    alertMessages.AppendLine($"{product.NAME} from Batch Id - {batch.BATCH_ID} is OUT OF STOCK.");
+                else if (batch.EXPIRY_DATE <= DateTime.Today)
+                    alertMessages.AppendLine($"{product.NAME} from Batch Id - {batch.BATCH_ID} has EXPIRED.");
+                else if ((batch.EXPIRY_DATE - DateTime.Today).TotalDays <= 5)
+                    alertMessages.AppendLine($"{product.NAME} from Batch Id - {batch.BATCH_ID} will EXPIRE in {(batch.EXPIRY_DATE-DateTime.Today).Days} days.");
+                else if (batch.REMAINING_QTY > product.MAX_THRESHOLD)
+                    alertMessages.AppendLine($"{product.NAME} from Batch Id - {batch.BATCH_ID} is OVERSTOCKED ({batch.REMAINING_QTY} units).");
+                else if (batch.REMAINING_QTY < 10)
+                    alertMessages.AppendLine($"{product.NAME} from Batch Id - {batch.BATCH_ID} has LOW STOCK ({batch.REMAINING_QTY} units).");
+            }
+            if (alertMessages.Length > 0)
+            {
+                //smsService.Send(alert);
+                await _emailService.SendAsync("Inventory Alerts", alertMessages.ToString());
             }
         }
     }

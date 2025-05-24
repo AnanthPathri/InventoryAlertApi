@@ -1,11 +1,20 @@
-﻿namespace InventoryAlertApi.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace InventoryAlertApi.Models
 {
-    public class Products
+    public class PRODUCTS
     {
-        public int id { get; set; }
-        public string name { get; set; }=string.Empty;
-        public int quantity { get; set; }
-        public DateTime expiryDate { get; set; }
-        public int overStockThreshold { get; set; } = 100;
+        [Key]
+        public string PRODUCT_ID { get; set; }
+        public string NAME { get; set; }
+        public string SKU { get; set; }
+        public string CATEGORY_ID { get; set; }
+        public string UNIT { get; set; }
+        public string DESCRIPTION { get; set; }
+        public bool ISACTIVE { get; set; }
+        public int MIN_THRESHOLD { get; set; }
+        public int MAX_THRESHOLD { get; set; }
+
+        public ICollection<STOCKBATCHES> STOCKBATCHES { get; set; }
     }
 }
