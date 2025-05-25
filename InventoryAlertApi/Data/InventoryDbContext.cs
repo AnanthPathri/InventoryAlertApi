@@ -13,6 +13,7 @@ namespace InventoryAlertApi.Data
         public DbSet<NOTIFICATIONS> NOTIFICATIONS { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<NOTIFICATIONS>().HasKey(n=>n.ID);
             //STOCKBATCHES -> PRODUCTS
             modelBuilder.Entity<STOCKBATCHES>()
                 .HasOne(sb => sb.PRODUCTS)
