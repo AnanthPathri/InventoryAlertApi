@@ -10,7 +10,8 @@ namespace InventoryAlertApi.Jobs
     public class InventoryAlertJob : IJob
     {
         private readonly InventoryDbContext _context;
-        private readonly EmailService _emailService = new();
+        private readonly EmailService _emailService;
+        private string message;
         //private readonly SmsService smsService = new();
         public InventoryAlertJob(InventoryDbContext context,EmailService emailService)
         {
@@ -21,15 +22,15 @@ namespace InventoryAlertApi.Jobs
         {
             //var products = await _context.PRODUCTS.ToListAsync();
             var stockBatches = await _context.STOCKBATCHES.Include(sb => sb.PRODUCTS).Include(sb => sb.WAREHOUSES).ToListAsync();
-            GetOutOfStockAlerts(stockBatches);
-            GetExpiredAlerts(stockBatches);
-            GetExpiringSoonAlerts(stockBatches);
-            GetOverStockAlerts(stockBatches);
-            GetLowStockAlerts(stockBatches);
+            await GetOutOfStockAlerts(stockBatches);
+            await GetExpiredAlerts(stockBatches);
+            await GetExpiringSoonAlerts(stockBatches);
+            await GetOverStockAlerts(stockBatches);
+            await GetLowStockAlerts(stockBatches);
         }
-        private async void GetOutOfStockAlerts(List<STOCKBATCHES> stockBatches)
+        private async Task GetOutOfStockAlerts(List<STOCKBATCHES> stockBatches)
         {
-            var alertMessages = new StringBuilder();
+            var alertMessages=new List<string>();
             var grouped = stockBatches.GroupBy(b => b.PRODUCT_ID);
             foreach (var group in grouped)
             {
@@ -37,48 +38,35 @@ namespace InventoryAlertApi.Jobs
                 var totalQuantity = group.Sum(g => g.REMAINING_QTY);
                 if (totalQuantity <= 0)
                 {
-                    alertMessages.AppendLine($"{product.NAME} is OUT of STOCK across all Warehouses");
+                    alertMessages.Add($"{product.NAME} is OUT of STOCK across all Warehouses");
                 }
             }
-            if (alertMessages.Length > 0)
-            {
-                //smsService.Send(alert);
-                await _emailService.SendAsync("[OUT OF STOCK]", alertMessages.ToString());
-            }
+            await SendGroupedAlerts("OUTOFSTOCK", alertMessages);
         }
-        private async void GetExpiredAlerts(List<STOCKBATCHES> stockBatches)
+        private async Task GetExpiredAlerts(List<STOCKBATCHES> stockBatches)
         {
-            var alertMessages = new StringBuilder();
-            //var grouped = stockBatches.GroupBy(b => b.PRODUCT_ID);
+            var alertMessages = new List<string>();
             foreach (var batch in stockBatches.Where(b=>b.EXPIRY_DATE<=DateTime.Today))
             {
                 var product = batch.PRODUCTS;
-                alertMessages.AppendLine($"{product.NAME} from BATCH {batch.BATCH_ID} has EXPIRED");
+                alertMessages.Add($"{product.NAME} from BATCH {batch.BATCH_ID} has EXPIRED");
             }
-            if (alertMessages.Length > 0)
-            {
-                //smsService.Send(alert);
-                await _emailService.SendAsync("[EXPIRED]", alertMessages.ToString());
-            }
+            await SendGroupedAlerts("EXPIRED", alertMessages);
         }
-        private async void GetExpiringSoonAlerts(List<STOCKBATCHES> stockBatches)
+        private async Task GetExpiringSoonAlerts(List<STOCKBATCHES> stockBatches)
         {
-            var alertMessages = new StringBuilder();
+            var alertMessages = new List<string>();
             foreach (var batch in stockBatches.Where(b=>b.EXPIRY_DATE>DateTime.Today&&(b.EXPIRY_DATE-DateTime.Today).TotalDays<=10))
             {
                 var product = batch.PRODUCTS;
                 var days = (batch.EXPIRY_DATE - DateTime.Today).Days;
-                alertMessages.AppendLine($"{product.NAME} from BATCH {batch.BATCH_ID} will EXPIRE in {days} days");
+                alertMessages.Add($"{product.NAME} from BATCH {batch.BATCH_ID} willl EXPIRE in {days} days");
             }
-            if (alertMessages.Length > 0)
-            {
-                //smsService.Send(alert);
-                await _emailService.SendAsync("[EXPIRING SOON]", alertMessages.ToString());
-            }
+            await SendGroupedAlerts("EXPIRYALERT", alertMessages);
         }
-        private async void GetOverStockAlerts(List<STOCKBATCHES> stockBatches)
+        private async Task GetOverStockAlerts(List<STOCKBATCHES> stockBatches)
         {
-            var alertMessages = new StringBuilder();
+            var alertMessages = new List<string>();
             var grouped = stockBatches.GroupBy(b => b.PRODUCT_ID);
             foreach (var group in grouped)
             {
@@ -86,18 +74,14 @@ namespace InventoryAlertApi.Jobs
                 var totalQuantity = group.Sum(g=>g.REMAINING_QTY);
                 if (totalQuantity > product.MAX_THRESHOLD)
                 {
-                    alertMessages.AppendLine($"{product.NAME} is OVERSTOCKED across all warehouses ({totalQuantity}) days");
+                    alertMessages.Add($"{product.NAME} is OVERSTOCKED across all warehouses of total ({totalQuantity})");
                 } 
             }
-            if (alertMessages.Length > 0)
-            {
-                //smsService.Send(alert);
-                await _emailService.SendAsync("[OVERSTOCKED]", alertMessages.ToString());
-            }
+            await SendGroupedAlerts("OVERSTOCK", alertMessages);
         }
-        private async void GetLowStockAlerts(List<STOCKBATCHES> stockBatches)
+        private async Task GetLowStockAlerts(List<STOCKBATCHES> stockBatches)
         {
-            var alertMessages = new StringBuilder();
+            var alertMessages = new List<string>();
             var grouped = stockBatches.GroupBy(b => b.PRODUCT_ID);
             foreach (var group in grouped)
             {
@@ -105,13 +89,39 @@ namespace InventoryAlertApi.Jobs
                 var totalQuantity = group.Sum(g => g.REMAINING_QTY);
                 if (totalQuantity < product.MIN_THRESHOLD)
                 {
-                    alertMessages.AppendLine($"{product.NAME} has LOWSTOCK across all warehouses ({totalQuantity}) days");
+                    alertMessages.Add($"{product.NAME} has LOWSTOCK across all warehouses (Qty: {totalQuantity})");
                 }
             }
-            if (alertMessages.Length > 0)
+            await SendGroupedAlerts("LOWSTOCK", alertMessages);
+        }
+
+        private async Task SendGroupedAlerts(string ruleType, List<string> messages)
+        {
+            var newMessage = new List<string>();
+            foreach (var message in messages)
             {
-                //smsService.Send(alert);
-                await _emailService.SendAsync("[LOWSTOCK]", alertMessages.ToString());
+                bool alreadySent = await _context.NOTIFICATIONS.AnyAsync(n => n.ALERTRULETYPE == ruleType &&
+                                                                      n.MESSAGE == message &&
+                                                                      n.CHANNEL == "email" &&
+                                                                      n.SENTAT > DateTime.Now.AddHours(-24));
+                if (!alreadySent)
+                {
+                    newMessage.Add(message);
+                    _context.NOTIFICATIONS.Add(new NOTIFICATIONS
+                    {
+                        ALERTRULETYPE = ruleType,
+                        MESSAGE = message,
+                        CHANNEL = "EMAIL",
+                        SENTAT = DateTime.Now,
+                        STATUS = "SENT"
+                    });
+                }
+            }
+            if (newMessage.Any())
+            {
+                string emailBody = string.Join(Environment.NewLine, newMessage);
+                await _emailService.SendAsync(ruleType, emailBody);
+                await _context.SaveChangesAsync();
             }
         }
     }
