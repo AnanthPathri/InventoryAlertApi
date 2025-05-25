@@ -9,11 +9,13 @@ namespace InventoryAlertApi.Data
         public DbSet<PRODUCTS> PRODUCTS { get; set; }
         public DbSet<STOCKBATCHES> STOCKBATCHES { get; set; }
         public DbSet<WAREHOUSES> WAREHOUSES { get; set; }
+        public DbSet<ALERTRULES> ALERTRULES { get; set; }
+        public DbSet<NOTIFICATIONS> NOTIFICATIONS { get; set; }
 
         public DbSet<CATEGORIES> CATEGORIES{ get; set; }
-        public DbSet<NOTIFICATIONS> NOTIFICATIONS { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<NOTIFICATIONS>().HasKey(n=>n.ID);
             //STOCKBATCHES -> PRODUCTS
             modelBuilder.Entity<STOCKBATCHES>()
                 .HasOne(sb => sb.PRODUCTS)
@@ -28,5 +30,9 @@ namespace InventoryAlertApi.Data
                 .HasNoKey();
             base.OnModelCreating(modelBuilder);
         }
+    }
+    public class InventoryContext : DbContext
+    {
+        public DbSet<ALERTRULES> ALERTRULES { get; set; }
     }
 }

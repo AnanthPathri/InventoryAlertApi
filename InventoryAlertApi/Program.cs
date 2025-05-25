@@ -33,7 +33,7 @@ builder.Services.AddQuartz(q =>
     var jobKey = new JobKey("InventoryAlertJob");
     q.AddJob<InventoryAlertJob>(opts => opts.WithIdentity(jobKey));
     q.AddTrigger(opts => opts.ForJob(jobKey).WithIdentity("InventoryAlertTrigger").WithSimpleSchedule(x =>
-                                            x.WithIntervalInMinutes(1).RepeatForever()));
+                                            x.WithIntervalInMinutes(15).RepeatForever()));
 });
 builder.Services.AddQuartzHostedService(options =>
 {
