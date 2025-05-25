@@ -5,14 +5,23 @@ using InventoryAlertApi.Services;
 using Quartz.Simpl;
 using Microsoft.EntityFrameworkCore;
 using InventoryAlertApi.Models;
+using InventoryAlertApi.RealHub;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAnyOrigin", builder =>
+    {
+        builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+    });
+});
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<InventoryAlertJob>();
+builder.Services.AddScoped<InventoryService>();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<InventoryDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -30,14 +39,17 @@ builder.Services.AddQuartzHostedService(options =>
 {
     options.WaitForJobsToComplete = true;
 });
+builder.Services.AddSignalR();
 var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.UseCors("AllowAnyOrigin");
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseAuthentication();
 app.MapControllers();
+app.MapHub<RealTimeHub>("/realtimehub");
 app.Run();

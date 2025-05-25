@@ -9,6 +9,9 @@ namespace InventoryAlertApi.Data
         public DbSet<PRODUCTS> PRODUCTS { get; set; }
         public DbSet<STOCKBATCHES> STOCKBATCHES { get; set; }
         public DbSet<WAREHOUSES> WAREHOUSES { get; set; }
+
+        public DbSet<CATEGORIES> CATEGORIES{ get; set; }
+        public DbSet<NOTIFICATIONS> NOTIFICATIONS { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             //STOCKBATCHES -> PRODUCTS
@@ -21,6 +24,8 @@ namespace InventoryAlertApi.Data
                 .HasOne(sb => sb.WAREHOUSES)
                 .WithMany(p => p.STOCKBATCHES)
                 .HasForeignKey(sb => sb.WAREHOUSE_ID);
+            modelBuilder.Entity<CATEGORIES>()
+                .HasNoKey();
             base.OnModelCreating(modelBuilder);
         }
     }

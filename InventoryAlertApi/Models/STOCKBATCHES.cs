@@ -12,7 +12,7 @@ namespace InventoryAlertApi.Models
         public PRODUCTS PRODUCTS { get; set; }
         public int QUANTITY { get; set; }
         public int REMAINING_QTY { get; set; }
-        public decimal COST_PER_UNIT { get; set; }
+        public decimal? COST_PER_UNIT { get; set; }
         public DateTime RECEIVED_DATE { get; set; }
         public DateTime EXPIRY_DATE { get; set; }
         [ForeignKey(nameof(WAREHOUSES))]
