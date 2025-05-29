@@ -14,10 +14,10 @@ namespace InventoryAlertApi.Models
         public int REMAINING_QTY { get; set; }
         public decimal? COST_PER_UNIT { get; set; }
         public DateTime RECEIVED_DATE { get; set; }
-        public DateTime EXPIRY_DATE { get; set; }
+        public DateTime? EXPIRY_DATE { get; set; }
         [ForeignKey(nameof(WAREHOUSES))]
         public string WAREHOUSE_ID { get; set; }
         public WAREHOUSES WAREHOUSES { get; set; }
-        public int DAYS_TO_EXPIRE { get; set; }
+        public int? DAYS_TO_EXPIRE { get; set; }
     }
 }

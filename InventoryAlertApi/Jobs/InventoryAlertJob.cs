@@ -21,12 +21,18 @@ namespace InventoryAlertApi.Jobs
         public async Task Execute(IJobExecutionContext context)
         {
             //var products = await _context.PRODUCTS.ToListAsync();
-            var stockBatches = await _context.STOCKBATCHES.Include(sb => sb.PRODUCTS).Include(sb => sb.WAREHOUSES).ToListAsync();
-            await GetOutOfStockAlerts(stockBatches);
-            await GetExpiredAlerts(stockBatches);
-            await GetExpiringSoonAlerts(stockBatches);
-            await GetOverStockAlerts(stockBatches);
-            await GetLowStockAlerts(stockBatches);
+            try { 
+                var stockBatches = await _context.STOCKBATCHES.Include(sb => sb.PRODUCTS).Include(sb => sb.WAREHOUSES).ToListAsync();
+                await GetOutOfStockAlerts(stockBatches);
+                await GetExpiredAlerts(stockBatches);
+                await GetExpiringSoonAlerts(stockBatches);
+                await GetOverStockAlerts(stockBatches);
+                await GetLowStockAlerts(stockBatches);
+            }
+            catch(Exception ex)
+            {
+
+            }
         }
         private async Task GetOutOfStockAlerts(List<STOCKBATCHES> stockBatches)
         {
@@ -46,7 +52,7 @@ namespace InventoryAlertApi.Jobs
         private async Task GetExpiredAlerts(List<STOCKBATCHES> stockBatches)
         {
             var alertMessages = new List<string>();
-            foreach (var batch in stockBatches.Where(b=>b.EXPIRY_DATE<=DateTime.Today))
+            foreach (var batch in stockBatches.Where(b => b.EXPIRY_DATE != null && b.EXPIRY_DATE <= DateTime.Today))
             {
                 var product = batch.PRODUCTS;
                 alertMessages.Add($"{product.NAME} from BATCH {batch.BATCH_ID} has EXPIRED");
@@ -56,10 +62,10 @@ namespace InventoryAlertApi.Jobs
         private async Task GetExpiringSoonAlerts(List<STOCKBATCHES> stockBatches)
         {
             var alertMessages = new List<string>();
-            foreach (var batch in stockBatches.Where(b=>b.EXPIRY_DATE>DateTime.Today&&(b.EXPIRY_DATE-DateTime.Today).TotalDays<=10))
+            foreach (var batch in stockBatches.Where(b => b.EXPIRY_DATE != null && b.EXPIRY_DATE > DateTime.Today && (b.EXPIRY_DATE - DateTime.Today)?.TotalDays <= 10))
             {
                 var product = batch.PRODUCTS;
-                var days = (batch.EXPIRY_DATE - DateTime.Today).Days;
+                var days = (batch.EXPIRY_DATE - DateTime.Today)?.Days;
                 alertMessages.Add($"{product.NAME} from BATCH {batch.BATCH_ID} willl EXPIRE in {days} days");
             }
             await SendGroupedAlerts("EXPIRYALERT", alertMessages);

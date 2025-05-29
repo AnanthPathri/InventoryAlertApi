@@ -46,7 +46,7 @@ namespace InventoryAlertApi.Controllers
             
             await _inventoryService.InsertUpdateInventory(inventory,"ADD");
             //var result = await _inventoryService.DashboardMetrics();
-            //await _hubContext.Clients.All.SendAsync("ReceiveMessage", result);
+            //await _hubContext.Clients.All.SendAsync("ReceiveMessage", "Update");
             return Ok();
         }
 

@@ -6,9 +6,9 @@ namespace InventoryAlertApi.RealHub
 {
     public class RealTimeHub : Hub
     {
-        public async Task SendMessage(DashboardDTO dashboardData)
+        public async Task SendMessage(string message)
         {
-            await Clients.All.SendAsync("ReceiveMessage", dashboardData);
+            await Clients.All.SendAsync("ReceiveMessage", message);
         }
     }
 }
